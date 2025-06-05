@@ -1,3 +1,4 @@
+'''
 import streamlit as st
 import leafmap.foliumap as leafmap
 import geopandas as gpd
@@ -11,7 +12,7 @@ st.title("🌍 City Boundary Fetcher (OpenStreetMap)")
 # Function to fetch boundary from OSM
 def get_osm_boundary(place_name, admin_level=8):
     """Fetch boundary from OSM using Overpass API."""
-    query = f """
+    query = f"""
     [out:json];
     relation["name"="{place_name}"]["admin_level"="{admin_level}"];
     out geom;
@@ -82,3 +83,71 @@ with col2:
             file_name=f"{city_name}_boundary.geojson",
             mime="application/json"
         )
+'''
+import streamlit as st
+import ee
+import geemap.foliumap as geemap
+from datetime import datetime
+
+def get_lst_ndvi(start_date, end_date):
+    kathmandu = ee.Geometry.Rectangle([85.25, 27.65, 85.45, 27.75], 'EPSG:4326', False)
+
+    dataset = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
+        .filterDate(start_date, end_date) \
+        .filterBounds(kathmandu)
+
+def process_image(image):
+        # LST
+        lst = image.select(['ST_B10']).multiply(0.00341802).add(-85.0).rename('LST')
+        # NDVI
+        nir = image.select('SR_B5')
+        red = image.select('SR_B4')
+        ndvi = nir.subtract(red).divide(nir.add(red)).rename('NDVI')
+        return image.select([]).addBands([lst, ndvi])
+
+    processed = dataset.map(process_image)
+    composite = processed.select(['LST', 'NDVI']).median().clip(kathmandu)
+    return composite
+#Streamlit APP 
+# Initialize GEE
+try:
+    ee.Initialize()
+except Exception as e:
+    ee.Authenticate()
+
+st.set_page_config(layout="wide")
+st.title("🌡️ Urban Heat Monitoring Dashboard – Kathmandu")
+
+# Date inputs
+start_date = st.date_input("Start Date", value=datetime(2023, 6, 1))
+end_date = st.date_input("End Date", value=datetime(2023, 9, 30))
+
+if start_date > end_date:
+    st.error("End date must be after start date.")
+else:
+    with st.spinner("Fetching satellite data..."):
+        image = get_lst_ndvi(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+
+    st.success("Data retrieved successfully!")
+
+    # Map visualization
+    m = geemap.Map(center=(27.7, 85.3), zoom=11)
+
+    # Add layers
+    lst_vis = {'min': 25, 'max': 45, 'palette': ['blue', 'white', 'red']}
+    ndvi_vis = {'min': -1, 'max': 1, 'palette': ['brown', 'yellow', 'green']}
+
+    m.addLayer(image.select('LST'), lst_vis, 'Land Surface Temperature')
+    m.addLayer(image.select('NDVI'), ndvi_vis, 'NDVI')
+
+    # Display map
+    m.to_streamlit(height=700)
+
+    # Optional: Show histogram or stats
+    if st.checkbox("Show Statistics"):
+        region = ee.Geometry.Rectangle([85.25, 27.65, 85.45, 27.75])
+        stats = image.reduceRegion(ee.Reducer.mean().combine({
+            reducer2: ee.Reducer.stdDev(),
+            sharedInputs: True
+        }), region, 30)
+        st.write(stats.getInfo())
