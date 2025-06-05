@@ -96,7 +96,7 @@ def get_lst_ndvi(start_date, end_date):
         .filterDate(start_date, end_date) \
         .filterBounds(kathmandu)
 
-   def process_image(image):
+    def process_image(image):
            # LST
            lst = image.select(['ST_B10']).multiply(0.00341802).add(-85.0).rename('LST')
            # NDVI
