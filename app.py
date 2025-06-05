@@ -143,7 +143,7 @@ else:
     # Display map
     m.to_streamlit(height=700)
 
-    # Optional: Show histogram or stats
+    #  Show histogram or stats
     if st.checkbox("Show Statistics"):
         region = ee.Geometry.Rectangle([85.25, 27.65, 85.45, 27.75])
         stats = image.reduceRegion(ee.Reducer.mean().combine({
