@@ -1,3 +1,5 @@
+#Feature to to fetch desired region
+"""
 import streamlit as st
 import leafmap.foliumap as leafmap
 import geopandas as gpd
@@ -11,7 +13,7 @@ st.title("🌍 City Boundary Fetcher (OpenStreetMap)")
 # Function to fetch boundary from OSM
 def get_osm_boundary(place_name, admin_level=8):
     """Fetch boundary from OSM using Overpass API."""
-    query = f """
+    query = f"""
     [out:json];
     relation["name"="{place_name}"]["admin_level"="{admin_level}"];
     out geom;
