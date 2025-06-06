@@ -4,3 +4,5 @@ geopandas
 folium
 pandas
 matplotlib
+geemap
+geemap.foliumap
